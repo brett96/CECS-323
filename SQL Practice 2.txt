@@ -1,0 +1,118 @@
+-- SET OPERATIONS
+-- 35. List all customers who didn't order in 2015 (78)
+SELECT customerNumber, customerName FROM customers WHERE customerNumber NOT IN
+    (SELECT customerNumber FROM orders WHERE (orderDate < '2016-01-01' AND orderDate > '2014-12-31'));
+
+-- 36. List all people that we deal with (employees and customer contacts). Display first name, last name, company name (or employee) (145)
+SELECT contactFirstName AS "First Name", contactLastName AS "Last Name", 'Customer' AS "Company" FROM customers
+UNION
+SELECT firstName, lastName, 'Employee' FROM employees;
+
+-- 37. List the states and the country that the state is part of that have customers but not offices, offices but not customers, 
+-- or both one or more customers and one or more offices all in one query.  Designate which state is which with the string 'Customer', 'Office', or 'Both'.  
+-- If a state falls into the “Both” category, do not list it as a Customer or an Office state.  Order by the country, then the state.  
+-- Give the category column (where you list ‘Customer’, ‘Office’, or ‘Both’) a header of “Category” and exclude any entries in which the state is null. (19)
+SELECT state, country, 'Both' AS "Category"
+FROM customers
+WHERE state IS NOT NULL
+INTERSECT
+SELECT state, country, 'Both' AS "Category"
+FROM offices
+WHERE state IS NOT NULL
+UNION
+(
+    SELECT state, country, 'Customer' AS "Category"
+    FROM customers
+    WHERE state IS NOT NULL
+    EXCEPT
+    SELECT state, country, 'Customer' AS "Category"
+    FROM offices
+    WHERE state IS NOT NULL
+)
+UNION
+(   
+    SELECT state, country, 'Office' AS "Category"
+    FROM offices
+    WHERE state IS NOT NULL
+    EXCEPT
+    SELECT state, country, 'Office' AS "Category"
+    FROM customers
+    WHERE state IS NOT NULL
+)
+ORDER BY country, state;
+
+-- 38. List the Product Code and Product name of every product that has never been in on order in which the customer asked for more than 48 of them.  Order by the Product Name.  (8)
+SELECT productCode, productName
+FROM products
+EXCEPT
+SELECT productCode, productName
+FROM orderDetails NATURAL JOIN products
+WHERE orderDetails.QUANTITYORDERED > 48
+ORDER BY productName;
+
+-- 39. List the last name, first name, and employee number of all of the employees who do not have any customers.  Order by last name first, then the first name. (8).
+SELECT lastName, firstName, employeeNumber
+FROM employees
+EXCEPT
+SELECT lastName, firstName, employeeNumber
+FROM employees NATURAL JOIN customers
+WHERE customers.SALESREPEMPLOYEENUMBER = employees.EMPLOYEENUMBER
+ORDER BY lastName, firstName;
+
+
+
+-- SUBQUERIES
+-- 40.  Find the first name and last name of all customer contacts whose customer is located in the same state as the San Francisco office. (11)
+SELECT contactFirstName, contactLastName FROM customers WHERE state = 
+    (SELECT state FROM offices WHERE city = 'San Francisco');
+
+-- 41.  Which products have an MSRP within 5% of the average MSRP across all products?  
+-- List the Product Name, the MSRP, and the average MSRP ordered by the product MSRP.
+SELECT productName, MSRP, (SELECT AVG(MSRP) FROM products) AS "Average MSRP" FROM products 
+WHERE MSRP BETWEEN (SELECT AVG(MSRP)-(AVG(MSRP)*.05) FROM products) AND (SELECT (AVG(MSRP)*.05) + AVG(MSRP) FROM products)
+ORDER BY productName, MSRP;
+
+-- 42.  Which customer made the largest individual payment. (1)
+SELECT * FROM customers NATURAL JOIN payments WHERE amount = 
+    (SELECT MAX(amount) FROM payments);
+
+-- 43.  Which customers made an individual payment where half of the payment is more than  average payment. List their name. (8)
+SELECT DISTINCT customerName FROM customers NATURAL JOIN payments WHERE (amount/2) > 
+    (SELECT AVG(amount) FROM payments);
+
+-- 44.  Which orderline is the smallest in terms of money. List the order number, orderline number and the money involved on that orderline. (1)
+SELECT orderNumber, orderLineNumber, quantityOrdered, priceEach FROM orderDetails WHERE (quantityOrdered*priceEach) =
+    (SELECT MIN(quantityOrdered * priceEach) FROM orderDetails);
+
+
+
+-- RECURSION
+-- 45.  List all employees that have the same last name. Make sure each combination is listed only once (5)
+SELECT DISTINCT e1.firstName, e2.firstName, e1.lastName
+FROM employees e1 INNER JOIN employees e2 
+ON e1.LASTNAME = e2.LASTNAME AND e1.firstName <> e2.firstName 
+ORDER BY e1.lastName, e1.firstName;
+
+-- 46.  List all the first and last name of all employees and their managers. Order by employee last name, then first name. (22)
+SELECT E.firstName AS "Employee First Name", E.lastName AS "Employee Last Name", M.firstName AS "Manager First Name", M.lastName AS "Manager Last Name"
+FROM Employees E NATURAL JOIN Employees M
+ORDER BY E.lastName, E.firstName; 
+
+
+
+--EXTRA
+-- 47.  What product that makes us the most money (qty*price) (1)
+SELECT MAX(quantityOrdered*priceEach) FROM orderDetails;
+
+-- 48.  List the products in the product line with the most number of products (38)
+
+
+-- 49.  What is the customer and sales person of the highest priced order? (1)
+SELECT customerName, salesRepEmployeeNumber, amount FROM payments NATURAL JOIN customers
+WHERE amount = 
+    (SELECT MAX(amount) FROM payments);
+
+-- 50.  What is the manager who manages the greatest number of employees (2)
+
+
+-- 51.  Select all employees who work for the manager that manages the greatest number of employees (12)
